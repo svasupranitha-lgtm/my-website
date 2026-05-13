@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}CGPA Tracker{% endblock %}
+{% block page_title %}CGPA Tracker 🎓{% endblock %}
+{% block page_subtitle %}Track your grades semester by semester{% endblock %}
+
+{% block content %}
+
+<div class="grid-2" style="margin-bottom:24px;">
+
+    <!-- LEFT: CGPA Circle + Add Semester -->
+    <div>
+        <!-- Big CGPA circle -->
+        <div class="card" style="text-align:center; margin-bottom:20px;">
+            <div class="section-title" style="justify-content:center;">📈 Your Current CGPA</div>
+
+            <!-- SVG Circle Progress -->
+            <div class="progress-circle-wrap">
+                <div class="progress-circle">
+                    <svg viewBox="0 0 160 160" width="160" height="160">
+                        <defs>
+                            <!-- Gradient for the progress arc -->
+                            <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#7C3AED"/>
+                                <stop offset="100%" stop-color="#EC4899"/>
+                            </linearGradient>
+                        </defs>
+                        <!-- Background circle -->
+                        <circle class="progress-circle-bg" cx="80" cy="80" r="70"/>
+                        <!-- Foreground arc (the actual progress) -->
+                        <circle class="progress-circle-fill" cx="80" cy="80" r="70"
+                            stroke-dasharray="439.8"
+                            stroke-dashoffset="{{ 439.8 - (cgpa / 10 * 439.8) }}"
+                            id="cgpaArc"/>
+                    </svg>
+                    <!-- Number in center -->
+                    <div class="progress-circle-text">
+                        <div class="progress-circle-number" id="cgpaNumber">{{ cgpa }}</div>
+                        <div style="font-size:12px; color:var(--text-muted);">out of 10</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grade label -->
+            <div class="badge badge-purple" style="font-size:14px; padding:6px 16px;" id="gradeLabel">
+                {% if cgpa >= 9 %}Outstanding 🌟
+                {% elif cgpa >= 8 %}Excellent 🔥
+                {% elif cgpa >= 7 %}Good 👍
+                {% elif cgpa >= 6 %}Average 📚
+                {% elif cgpa > 0 %}Keep Going 💪
+                {% else %}No Data Yet{% endif %}
+            </div>
+        </div>
+
+        <!-- Add Semester Form -->
+        <div class="card">
+            <div class="section-title">➕ Add Semester</div>
+            <div class="form-group">
+                <label class="form-label">Semester Name</label>
+                <input type="text" class="form-input" id="semName" placeholder="e.g. Semester 1, 2nd Year Sem 1"/>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group">
+                    <label class="form-label">GPA (out of 10)</label>
+                    <input type="number" class="form-input" id="semGPA" placeholder="8.5" step="0.01" min="0" max="10"/>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Credits</label>
+                    <input type="number" class="form-input" id="semCredits" placeholder="24" min="1"/>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="addSemester()" style="width:100%;">
+                ✦ Add Semester
+            </button>
+        </div>
+    </div>
+
+    <!-- RIGHT: Semester Records Table -->
+    <div>
+        <div class="section-title">📋 Semester Records</div>
+
+        {% if records %}
+            <div id="semesterList">
+                {% for r in records %}
+                <div class="card" style="padding:16px; margin-bottom:10px;" id="sem-{{ r.id }}">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-weight:700; font-size:15px;">{{ r.semester }}</div>
+                            <div style="font-size:13px; color:var(--text-secondary); margin-top:2px;">
+                                📚 {{ r.credits }} credits
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-family:var(--font-display); font-size:26px; font-weight:800; background:var(--gradient-main); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">
+                                {{ r.gpa }}
+                            </div>
+                            <div style="font-size:11px; color:var(--text-muted);">GPA</div>
+                        </div>
+                    </div>
+                    <div class="progress-bar-wrap" style="margin-top:10px;">
+                        <div class="progress-bar-fill" style="width:{{ (r.gpa / 10 * 100)|round|int }}%"></div>
+                    </div>
+                    <button class="btn btn-danger btn-sm" style="margin-top:10px;" onclick="deleteSemester({{ r.id }})">
+                        🗑 Delete
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <span class="empty-state-icon">📊</span>
+                <p class="empty-state-text">No semesters added yet.<br>Add your first semester on the left!</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- GPA Scale Reference -->
+<div class="card card-glass">
+    <div class="section-title">📖 GPA Scale Reference</div>
+    <div class="grid-4">
+        <div style="text-align:center; padding:12px;">
+            <div style="font-size:22px; font-weight:800; color:#10B981;">9-10</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Outstanding</div>
+        </div>
+        <div style="text-align:center; padding:12px;">
+            <div style="font-size:22px; font-weight:800; color:#3B82F6;">8-9</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Excellent</div>
+        </div>
+        <div style="text-align:center; padding:12px;">
+            <div style="font-size:22px; font-weight:800; color:#F59E0B;">7-8</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Good</div>
+        </div>
+        <div style="text-align:center; padding:12px;">
+            <div style="font-size:22px; font-weight:800; color:#EF4444;">Below 7</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Need Improvement</div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ---- Add a new semester ----
+    async function addSemester() {
+        const sem = document.getElementById('semName').value.trim();
+        const gpa = parseFloat(document.getElementById('semGPA').value);
+        const credits = parseInt(document.getElementById('semCredits').value);
+
+        // Basic validation
+        if (!sem || isNaN(gpa) || isNaN(credits)) {
+            showToast('Please fill in all fields!', 'error');
+            return;
+        }
+        if (gpa < 0 || gpa > 10) {
+            showToast('GPA must be between 0 and 10!', 'error');
+            return;
+        }
+
+        // Send data to Flask backend
+        const resp = await fetch('/api/cgpa', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ semester: sem, gpa: gpa, credits: credits })
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            showToast('Semester added! 🎉', 'success');
+            // Reload page to show new record
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showToast(data.message || 'Error!', 'error');
+        }
+    }
+
+    // ---- Delete a semester ----
+    async function deleteSemester(id) {
+        if (!confirm('Delete this semester record?')) return;
+        await deleteItem(`/api/cgpa/${id}`, () => {
+            document.getElementById(`sem-${id}`).remove();
+            setTimeout(() => location.reload(), 500);
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}To-Do List{% endblock %}
+{% block page_title %}To-Do List ✅{% endblock %}
+{% block page_subtitle %}Get things done, one task at a time{% endblock %}
+
+{% block content %}
+
+<!-- ============================================================
+     QUICK ADD TASK (inline, no modal needed)
+     ============================================================ -->
+<div class="card" style="margin-bottom:24px;">
+    <div class="section-title">➕ Add New Task</div>
+    <div style="display:grid; grid-template-columns:1fr auto auto auto; gap:12px; align-items:end;">
+        <div class="form-group" style="margin-bottom:0;">
+            <input type="text" class="form-input" id="taskTitle" placeholder="What needs to be done? 🤔" onkeydown="if(event.key==='Enter') addTask()"/>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+            <select class="form-select" id="taskPriority">
+                <option value="high">🔴 High</option>
+                <option value="medium" selected>🟡 Medium</option>
+                <option value="low">🟢 Low</option>
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+            <input type="date" class="form-input" id="taskDue"/>
+        </div>
+        <button class="btn btn-primary" onclick="addTask()">Add Task ✦</button>
+    </div>
+    <div class="form-group" style="margin-top:12px; margin-bottom:0;">
+        <input type="text" class="form-input" id="taskDesc" placeholder="Description (optional)"/>
+    </div>
+</div>
+
+<!-- ============================================================
+     TASK STATS
+     ============================================================ -->
+<div class="grid-3" style="margin-bottom:24px;">
+    <div class="card-stat">
+        <div class="stat-icon">📝</div>
+        <div class="stat-number">{{ tasks|length }}</div>
+        <div class="stat-label">Total Tasks</div>
+    </div>
+    <div class="card-stat">
+        <div class="stat-icon">✅</div>
+        <div class="stat-number">{{ tasks|selectattr('is_done', 'equalto', 1)|list|length }}</div>
+        <div class="stat-label">Completed</div>
+    </div>
+    <div class="card-stat">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-number">{{ tasks|selectattr('is_done', 'equalto', 0)|list|length }}</div>
+        <div class="stat-label">Pending</div>
+    </div>
+</div>
+
+<!-- ============================================================
+     FILTER TABS
+     ============================================================ -->
+<div style="display:flex; gap:8px; margin-bottom:20px;">
+    <button class="btn btn-primary btn-sm" onclick="filterTasks('all')" id="filter-all">All</button>
+    <button class="btn btn-secondary btn-sm" onclick="filterTasks('pending')" id="filter-pending">Pending</button>
+    <button class="btn btn-secondary btn-sm" onclick="filterTasks('done')" id="filter-done">Done</button>
+    <button class="btn btn-danger btn-sm" onclick="filterTasks('high')" id="filter-high">🔴 High Priority</button>
+</div>
+
+<!-- ============================================================
+     TASK LIST
+     ============================================================ -->
+<div id="taskList">
+{% if tasks %}
+    {% for task in tasks %}
+    <div class="task-item priority-{{ task.priority }} {% if task.is_done %}done{% endif %}" id="task-{{ task.id }}" data-done="{{ task.is_done }}" data-priority="{{ task.priority }}">
+
+        <!-- Checkbox to mark done -->
+        <input type="checkbox"
+               class="task-checkbox"
+               {% if task.is_done %}checked{% endif %}
+               onchange="toggleTask({{ task.id }}, this.checked)"/>
+
+        <!-- Task content -->
+        <div style="flex:1;">
+            <div class="task-title">{{ task.title }}</div>
+            {% if task.description %}
+            <div class="task-desc">{{ task.description }}</div>
+            {% endif %}
+            <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; align-items:center;">
+                <!-- Priority badge -->
+                <span class="badge {% if task.priority == 'high' %}badge-danger{% elif task.priority == 'medium' %}badge-warning{% else %}badge-safe{% endif %}">
+                    {% if task.priority == 'high' %}🔴 High{% elif task.priority == 'medium' %}🟡 Medium{% else %}🟢 Low{% endif %}
+                </span>
+                {% if task.due_date %}
+                <span style="font-size:11px; color:var(--text-muted);">📅 Due: {{ task.due_date }}</span>
+                {% endif %}
+                <span style="font-size:11px; color:var(--text-muted);">{{ task.created_at[:10] }}</span>
+            </div>
+        </div>
+
+        <!-- Delete button -->
+        <button class="btn btn-danger btn-sm" onclick="deleteTask({{ task.id }})">🗑</button>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="empty-state">
+        <span class="empty-state-icon">🎉</span>
+        <p class="empty-state-text">No tasks yet!<br>Add your first task above.</p>
+    </div>
+{% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ---- Add new task ----
+    async function addTask() {
+        const title = document.getElementById('taskTitle').value.trim();
+        const desc = document.getElementById('taskDesc').value.trim();
+        const priority = document.getElementById('taskPriority').value;
+        const due = document.getElementById('taskDue').value;
+
+        if (!title) {
+            showToast('Task title cannot be empty!', 'error');
+            return;
+        }
+
+        const resp = await fetch('/api/tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, description: desc, priority, due_date: due })
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            showToast('Task added! ✅', 'success');
+            // Clear inputs
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskDesc').value = '';
+            document.getElementById('taskDue').value = '';
+            setTimeout(() => location.reload(), 500);
+        }
+    }
+
+    // ---- Toggle task done/undone ----
+    async function toggleTask(id, isDone) {
+        await fetch(`/api/tasks/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_done: isDone ? 1 : 0 })
+        });
+
+        // Visually update without reload
+        const taskEl = document.getElementById(`task-${id}`);
+        if (isDone) {
+            taskEl.classList.add('done');
+            taskEl.dataset.done = '1';
+            showToast('Task done! 🎉', 'success');
+        } else {
+            taskEl.classList.remove('done');
+            taskEl.dataset.done = '0';
+        }
+    }
+
+    // ---- Delete a task ----
+    async function deleteTask(id) {
+        await deleteItem(`/api/tasks/${id}`, () => {
+            document.getElementById(`task-${id}`).remove();
+        });
+    }
+
+    // ---- Filter tasks by status ----
+    function filterTasks(filter) {
+        // Update button styles
+        document.querySelectorAll('[id^="filter-"]').forEach(btn => {
+            btn.className = 'btn btn-secondary btn-sm';
+        });
+        document.getElementById(`filter-${filter}`).className = 'btn btn-primary btn-sm';
+
+        // Show/hide tasks
+        document.querySelectorAll('.task-item').forEach(item => {
+            let show = true;
+            if (filter === 'pending') show = item.dataset.done === '0';
+            else if (filter === 'done') show = item.dataset.done === '1';
+            else if (filter === 'high') show = item.dataset.priority === 'high';
+            item.style.display = show ? 'flex' : 'none';
+        });
+    }
+</script>
+{% endblock %}

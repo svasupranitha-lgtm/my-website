@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Hey there! 👋{% endblock %}
+{% block page_subtitle %}Here's your study snapshot for today{% endblock %}
+
+{% block content %}
+
+<!-- ============================================================
+     TOP STATS ROW
+     ============================================================ -->
+<div class="grid-4">
+    <!-- CGPA Card -->
+    <div class="card-stat">
+        <div class="stat-icon">🎓</div>
+        <div class="stat-number">{{ cgpa }}</div>
+        <div class="stat-label">Current CGPA</div>
+    </div>
+
+    <!-- Pending Tasks Card -->
+    <div class="card-stat">
+        <div class="stat-icon">✅</div>
+        <div class="stat-number">{{ pending_tasks }}</div>
+        <div class="stat-label">Tasks Pending</div>
+    </div>
+
+    <!-- Today's Planner Card -->
+    <div class="card-stat">
+        <div class="stat-icon">📅</div>
+        <div class="stat-number">{{ today_items }}</div>
+        <div class="stat-label">Today's Plan Items</div>
+    </div>
+
+    <!-- Upcoming Events Card -->
+    <div class="card-stat">
+        <div class="stat-icon">🔔</div>
+        <div class="stat-number">{{ upcoming }}</div>
+        <div class="stat-label">Upcoming Events</div>
+    </div>
+</div>
+
+<!-- ============================================================
+     MIDDLE ROW: Streak + Quote
+     ============================================================ -->
+<div class="grid-2" style="margin-bottom: 24px;">
+
+    <!-- Streak Counter -->
+    <div class="card" style="display:flex; align-items:center; gap:20px;">
+        <div class="streak-badge">
+            <span class="streak-fire">🔥</span>
+            <div>
+                <div class="streak-number">{{ streak }}</div>
+                <div class="streak-label">day streak!</div>
+            </div>
+        </div>
+        <div>
+            <div style="font-family: var(--font-display); font-size:16px; font-weight:700; margin-bottom:4px;">Keep it up!</div>
+            <div style="color:var(--text-secondary); font-size:13px;">You're on a roll. Come back tomorrow to keep your streak going!</div>
+        </div>
+    </div>
+
+    <!-- Task Progress -->
+    <div class="card">
+        <div class="section-title">📊 Task Progress</div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+            <span style="font-size:13px; color:var(--text-secondary);">{{ done_tasks }} of {{ total_tasks }} done</span>
+            <span style="font-size:13px; font-weight:700; color:var(--accent-primary);">
+                {% if total_tasks > 0 %}{{ ((done_tasks / total_tasks) * 100)|round|int }}%{% else %}0%{% endif %}
+            </span>
+        </div>
+        <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" style="width: {% if total_tasks > 0 %}{{ ((done_tasks / total_tasks) * 100)|round|int }}{% else %}0{% endif %}%"></div>
+        </div>
+        <a href="/tasks" class="btn btn-primary btn-sm" style="margin-top:16px;">View All Tasks →</a>
+    </div>
+</div>
+
+<!-- ============================================================
+     BOTTOM ROW: Quote + Fact
+     ============================================================ -->
+<div class="grid-2" style="margin-bottom: 24px;">
+
+    <!-- Daily Motivation Quote -->
+    <div>
+        <div class="section-title">💬 Today's Motivation</div>
+        <div class="quote-card">
+            <p class="quote-text" id="quoteText">"{{ quote.quote }}"</p>
+            <p class="quote-author">— {{ quote.author }}</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:12px;" onclick="newQuote()">🔄 New Quote</button>
+    </div>
+
+    <!-- Daily Study Fact -->
+    <div>
+        <div class="section-title">🧠 Study Fact of the Day</div>
+        <div class="fact-card">
+            <p class="fact-text" id="factText">{{ fact }}</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:12px;" onclick="newFact()">🔄 New Fact</button>
+
+        <!-- Quick Links -->
+        <div class="section-title" style="margin-top:20px;">⚡ Quick Actions</div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            <a href="/tasks" class="btn btn-primary btn-sm">+ Add Task</a>
+            <a href="/planner" class="btn btn-green btn-sm">+ Plan Day</a>
+            <a href="/reminders" class="btn btn-amber btn-sm">+ Reminder</a>
+            <a href="/cgpa" class="btn btn-secondary btn-sm">📈 CGPA</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ---- Fetch new quote without page reload ----
+    async function newQuote() {
+        const resp = await fetch('/api/quote');
+        const data = await resp.json();
+        document.getElementById('quoteText').textContent = `"${data.quote}"`;
+        // Bounce animation
+        const el = document.querySelector('.quote-text');
+        el.style.animation = 'none';
+        el.offsetHeight; // Force reflow
+        el.style.animation = 'fadeInUp 0.4s ease';
+    }
+
+    // ---- Fetch new fact ----
+    async function newFact() {
+        const resp = await fetch('/api/fact');
+        const data = await resp.json();
+        document.getElementById('factText').textContent = data.fact;
+        const el = document.getElementById('factText');
+        el.style.animation = 'none';
+        el.offsetHeight;
+        el.style.animation = 'fadeInUp 0.4s ease';
+    }
+</script>
+{% endblock %}

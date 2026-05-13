@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Reminders{% endblock %}
+{% block page_title %}Reminders & Events 🔔{% endblock %}
+{% block page_subtitle %}Never miss an important deadline again{% endblock %}
+
+{% block content %}
+
+<div class="grid-2" style="margin-bottom:24px;">
+
+    <!-- LEFT: Add Reminder Form -->
+    <div class="card">
+        <div class="section-title">🔔 Set New Reminder</div>
+
+        <div class="form-group">
+            <label class="form-label">Event / Reminder Title</label>
+            <input type="text" class="form-input" id="remTitle" placeholder="e.g. Physics Exam, Assignment Due..."/>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Description (optional)</label>
+            <input type="text" class="form-input" id="remDesc" placeholder="Any extra details..."/>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="form-group">
+                <label class="form-label">Date</label>
+                <input type="date" class="form-input" id="remDate"/>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Time</label>
+                <input type="time" class="form-input" id="remTime"/>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Category</label>
+            <select class="form-select" id="remCategory">
+                <option value="exam">📝 Exam</option>
+                <option value="assignment">📋 Assignment</option>
+                <option value="event">🎉 Event</option>
+                <option value="meeting">👥 Meeting</option>
+                <option value="personal">💜 Personal</option>
+                <option value="general">📌 General</option>
+            </select>
+        </div>
+
+        <button class="btn btn-primary" onclick="addReminder()" style="width:100%;">
+            🔔 Set Reminder
+        </button>
+    </div>
+
+    <!-- RIGHT: Stats -->
+    <div>
+        <div class="section-title">📊 Overview</div>
+        <div class="grid-2" style="margin-bottom:16px;">
+            <div class="card-stat">
+                <div class="stat-icon">📅</div>
+                <div class="stat-number">{{ upcoming|length }}</div>
+                <div class="stat-label">Upcoming</div>
+            </div>
+            <div class="card-stat">
+                <div class="stat-icon">✅</div>
+                <div class="stat-number">{{ past|length }}</div>
+                <div class="stat-label">Past Events</div>
+            </div>
+        </div>
+
+        <!-- Category legend -->
+        <div class="card card-glass">
+            <div class="section-title" style="font-size:14px;">🏷 Categories</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                <span class="badge badge-danger">📝 Exam</span>
+                <span class="badge badge-warning">📋 Assignment</span>
+                <span class="badge badge-safe">🎉 Event</span>
+                <span class="badge badge-purple">👥 Meeting</span>
+                <span class="badge badge-pink">💜 Personal</span>
+                <span class="badge" style="background:rgba(107,114,128,0.15); color:#9CA3AF; border:1px solid rgba(107,114,128,0.25);">📌 General</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     UPCOMING REMINDERS
+     ============================================================ -->
+<div class="section-title">⏳ Upcoming Events</div>
+
+{% if upcoming %}
+    {% for r in upcoming %}
+    {% set event_date = r.event_date %}
+    {% set day = event_date[8:10] %}
+    {% set month_num = event_date[5:7] %}
+    {% set months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] %}
+
+    <div class="reminder-card" id="rem-{{ r.id }}">
+        <!-- Date block -->
+        <div class="reminder-date-block">
+            <div class="reminder-day">{{ day }}</div>
+            <div class="reminder-month">{{ months[month_num|int - 1] }}</div>
+        </div>
+
+        <!-- Content -->
+        <div class="reminder-content">
+            <div class="reminder-title">{{ r.title }}</div>
+            {% if r.description %}
+            <div class="reminder-desc">{{ r.description }}</div>
+            {% endif %}
+            <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; align-items:center;">
+                {% if r.event_time %}
+                <span style="font-size:12px; color:var(--text-muted);">🕐 {{ r.event_time }}</span>
+                {% endif %}
+                <!-- Category badge -->
+                <span class="badge
+                    {% if r.category == 'exam' %}badge-danger
+                    {% elif r.category == 'assignment' %}badge-warning
+                    {% elif r.category == 'event' %}badge-safe
+                    {% elif r.category == 'meeting' %}badge-purple
+                    {% elif r.category == 'personal' %}badge-pink
+                    {% else %}badge-purple{% endif %}">
+                    {% if r.category == 'exam' %}📝 Exam
+                    {% elif r.category == 'assignment' %}📋 Assignment
+                    {% elif r.category == 'event' %}🎉 Event
+                    {% elif r.category == 'meeting' %}👥 Meeting
+                    {% elif r.category == 'personal' %}💜 Personal
+                    {% else %}📌 General{% endif %}
+                </span>
+                <!-- Days left countdown (calculated in JS) -->
+                <span class="days-left" id="days-{{ r.id }}" data-date="{{ r.event_date }}"></span>
+            </div>
+        </div>
+
+        <!-- Delete button -->
+        <button class="btn btn-danger btn-sm" onclick="deleteReminder({{ r.id }})">🗑</button>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="empty-state">
+        <span class="empty-state-icon">🎉</span>
+        <p class="empty-state-text">No upcoming events!<br>Add a reminder using the form.</p>
+    </div>
+{% endif %}
+
+<!-- Past Events (collapsed section) -->
+{% if past %}
+<div class="section-divider"></div>
+<div class="section-title" style="color:var(--text-muted);">📜 Past Events</div>
+{% for r in past %}
+<div class="reminder-card" style="opacity:0.5;" id="rem-{{ r.id }}">
+    <div class="reminder-date-block" style="background:rgba(107,114,128,0.1);">
+        <div class="reminder-day" style="color:var(--text-muted);">{{ r.event_date[8:10] }}</div>
+        <div class="reminder-month">{{ r.event_date[5:7] }}</div>
+    </div>
+    <div class="reminder-content">
+        <div class="reminder-title" style="text-decoration:line-through;">{{ r.title }}</div>
+    </div>
+    <button class="btn btn-danger btn-sm" onclick="deleteReminder({{ r.id }})">🗑</button>
+</div>
+{% endfor %}
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ---- Calculate and display days left for each reminder ----
+    document.querySelectorAll('[id^="days-"]').forEach(el => {
+        const eventDate = new Date(el.dataset.date);
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const diff = Math.round((eventDate - today) / (1000 * 60 * 60 * 24));
+
+        if (diff === 0) {
+            el.textContent = '🔥 Today!';
+            el.className = 'days-left days-urgent';
+        } else if (diff === 1) {
+            el.textContent = '⚠️ Tomorrow!';
+            el.className = 'days-left days-urgent';
+        } else if (diff <= 7) {
+            el.textContent = `⚡ ${diff} days left`;
+            el.className = 'days-left days-soon';
+        } else {
+            el.textContent = `📅 ${diff} days left`;
+            el.className = 'days-left days-ok';
+        }
+    });
+
+    // ---- Add reminder ----
+    async function addReminder() {
+        const title = document.getElementById('remTitle').value.trim();
+        const desc = document.getElementById('remDesc').value.trim();
+        const date = document.getElementById('remDate').value;
+        const time = document.getElementById('remTime').value;
+        const category = document.getElementById('remCategory').value;
+
+        if (!title || !date) {
+            showToast('Title and date are required!', 'error');
+            return;
+        }
+
+        const resp = await fetch('/api/reminders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, description: desc, event_date: date, event_time: time, category })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            showToast('Reminder set! 🔔', 'success');
+            setTimeout(() => location.reload(), 600);
+        }
+    }
+
+    // ---- Delete reminder ----
+    async function deleteReminder(id) {
+        await deleteItem(`/api/reminders/${id}`, () => {
+            document.getElementById(`rem-${id}`).remove();
+        });
+    }
+</script>
+{% endblock %}

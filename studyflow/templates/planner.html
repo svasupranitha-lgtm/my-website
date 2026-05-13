@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Planner{% endblock %}
+{% block page_title %}Daily Planner 📅{% endblock %}
+{% block page_subtitle %}Plan your day, own your future{% endblock %}
+
+{% block content %}
+
+<div class="grid-2" style="margin-bottom:24px;">
+
+    <!-- LEFT: Add Planner Item -->
+    <div class="card">
+        <div class="section-title">➕ Add to Planner</div>
+
+        <div class="form-group">
+            <label class="form-label">Activity / Task</label>
+            <input type="text" class="form-input" id="planTitle" placeholder="e.g. Study Chapter 3, Gym, Lunch..."/>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="form-group">
+                <label class="form-label">Date</label>
+                <input type="date" class="form-input" id="planDate" value="{{ today }}"/>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Time</label>
+                <input type="time" class="form-input" id="planTime"/>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Category</label>
+            <select class="form-select" id="planCategory">
+                <option value="study">📚 Study</option>
+                <option value="exercise">🏃 Exercise</option>
+                <option value="break">☕ Break</option>
+                <option value="social">👥 Social</option>
+                <option value="other">📌 Other</option>
+            </select>
+        </div>
+
+        <button class="btn btn-primary" onclick="addPlanItem()" style="width:100%;">
+            ✦ Add to Planner
+        </button>
+    </div>
+
+    <!-- RIGHT: Today at a glance -->
+    <div>
+        <div class="section-title">⚡ Today's Plan</div>
+        {% set today_items = items|selectattr('date', 'equalto', today)|list %}
+        {% if today_items %}
+            {% for item in today_items %}
+            <div class="planner-item {% if item.is_done %}done{% endif %}" id="plan-{{ item.id }}">
+                <div class="planner-time">{{ item.time or '--:--' }}</div>
+                <div class="planner-content">
+                    <div class="planner-title" style="{% if item.is_done %}text-decoration:line-through; opacity:0.5;{% endif %}">
+                        {{ item.title }}
+                    </div>
+                    <span class="category-pill cat-{{ item.category }}">
+                        {% if item.category == 'study' %}📚 Study
+                        {% elif item.category == 'exercise' %}🏃 Exercise
+                        {% elif item.category == 'break' %}☕ Break
+                        {% elif item.category == 'social' %}👥 Social
+                        {% else %}📌 Other{% endif %}
+                    </span>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    <input type="checkbox" class="task-checkbox"
+                           {% if item.is_done %}checked{% endif %}
+                           onchange="togglePlanItem({{ item.id }}, this.checked)"/>
+                    <button class="btn btn-danger btn-sm" onclick="deletePlanItem({{ item.id }})">🗑</button>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state" style="padding:32px;">
+                <span class="empty-state-icon">📅</span>
+                <p class="empty-state-text">Nothing planned for today yet.<br>Add something on the left!</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ============================================================
+     UPCOMING SCHEDULE
+     ============================================================ -->
+{% set future_items = items|rejectattr('date', 'equalto', today)|list %}
+{% if future_items %}
+<div class="section-divider"></div>
+<div class="section-title">📆 Upcoming Schedule</div>
+
+{% set current_date = namespace(val='') %}
+{% for item in future_items %}
+    {% if item.date != current_date.val %}
+        {% set current_date.val = item.date %}
+        <div style="font-family:var(--font-display); font-size:14px; font-weight:700; color:var(--accent-primary); margin:16px 0 8px; padding:6px 12px; background:rgba(124,58,237,0.1); border-radius:var(--radius-sm); display:inline-block;">
+            📅 {{ item.date }}
+        </div>
+    {% endif %}
+    <div class="planner-item" id="plan-{{ item.id }}">
+        <div class="planner-time">{{ item.time or '--:--' }}</div>
+        <div class="planner-content">
+            <div class="planner-title">{{ item.title }}</div>
+            <span class="category-pill cat-{{ item.category }}">{{ item.category }}</span>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deletePlanItem({{ item.id }})">🗑</button>
+    </div>
+{% endfor %}
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function addPlanItem() {
+        const title = document.getElementById('planTitle').value.trim();
+        const date = document.getElementById('planDate').value;
+        const time = document.getElementById('planTime').value;
+        const category = document.getElementById('planCategory').value;
+
+        if (!title || !date) {
+            showToast('Please fill in title and date!', 'error');
+            return;
+        }
+
+        const resp = await fetch('/api/planner', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, date, time, category })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            showToast('Added to planner! 📅', 'success');
+            setTimeout(() => location.reload(), 500);
+        }
+    }
+
+    async function togglePlanItem(id, isDone) {
+        await fetch(`/api/planner/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_done: isDone ? 1 : 0 })
+        });
+        if (isDone) showToast('Done! ✅', 'success');
+    }
+
+    async function deletePlanItem(id) {
+        await deleteItem(`/api/planner/${id}`, () => {
+            document.getElementById(`plan-${id}`).remove();
+        });
+    }
+</script>
+{% endblock %}

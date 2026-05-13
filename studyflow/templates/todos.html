@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}To-Do List{% endblock %}
+{% block page_title %}To-Do List{% endblock %}
+{% block page_subtitle %}Smash those tasks, one ✅ at a time{% endblock %}
+
+{% block content %}
+
+<!-- Productivity Score Row -->
+<div class="score-row">
+    <div class="score-card">
+        <div class="score-circle">
+            <svg viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="var(--border)" stroke-width="8"/>
+                <circle cx="50" cy="50" r="40" fill="none" stroke="var(--accent)"
+                    stroke-width="8" stroke-linecap="round"
+                    stroke-dasharray="251.2"
+                    stroke-dashoffset="{{ (1 - score/100) * 251.2 }}"
+                    transform="rotate(-90 50 50)"/>
+            </svg>
+            <span class="score-num">{{ score }}%</span>
+        </div>
+        <div class="score-info">
+            <div class="score-title">Productivity Score</div>
+            <div class="score-sub">{{ completed }} of {{ total }} tasks done</div>
+        </div>
+    </div>
+
+    <div class="task-counter">
+        <div class="counter-item">
+            <span class="counter-num">{{ total }}</span>
+            <span class="counter-lbl">Total</span>
+        </div>
+        <div class="counter-item green">
+            <span class="counter-num">{{ completed }}</span>
+            <span class="counter-lbl">Done</span>
+        </div>
+        <div class="counter-item orange">
+            <span class="counter-num">{{ pending }}</span>
+            <span class="counter-lbl">Pending</span>
+        </div>
+    </div>
+</div>
+
+
+<!-- Add Task Form -->
+<div class="form-card">
+    <h3 class="form-title">➕ New Task</h3>
+    <div class="form-row">
+        <div class="form-group" style="flex:3">
+            <label>Task Title</label>
+            <input type="text" id="taskTitle" placeholder="What do you need to do?" class="form-input"
+                   onkeydown="if(event.key==='Enter') addTask()">
+        </div>
+        <div class="form-group">
+            <label>Priority</label>
+            <select id="taskPriority" class="form-input form-select">
+                <option value="high">🔴 High</option>
+                <option value="medium" selected>🟡 Medium</option>
+                <option value="low">🟢 Low</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Due Date</label>
+            <input type="date" id="taskDue" class="form-input">
+        </div>
+        <button class="btn-primary" onclick="addTask()">Add</button>
+    </div>
+</div>
+
+
+<!-- Filter Tabs -->
+<div class="filter-tabs">
+    <button class="filter-tab active" onclick="filterTasks('all', this)">All ({{ total }})</button>
+    <button class="filter-tab" onclick="filterTasks('pending', this)">Pending ({{ pending }})</button>
+    <button class="filter-tab" onclick="filterTasks('completed', this)">Done ({{ completed }})</button>
+    <button class="filter-tab" onclick="filterTasks('high', this)">🔴 High Priority</button>
+</div>
+
+
+<!-- Tasks List -->
+<div class="tasks-container" id="tasksContainer">
+
+    {% if tasks %}
+        {% for task in tasks %}
+        <div class="task-item {% if task.completed %}task-done{% endif %} priority-{{ task.priority }}"
+             id="task-{{ task.id }}"
+             data-status="{{ 'completed' if task.completed else 'pending' }}"
+             data-priority="{{ task.priority }}">
+
+            <!-- Checkbox -->
+            <button class="task-check {% if task.completed %}checked{% endif %}"
+                    onclick="toggleTask({{ task.id }})">
+                {{ '✓' if task.completed else '' }}
+            </button>
+
+            <!-- Task Info -->
+            <div class="task-info">
+                <div class="task-title {% if task.completed %}strikethrough{% endif %}">
+                    {{ task.title }}
+                </div>
+                {% if task.due_date %}
+                <div class="task-due">📅 {{ task.due_date }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Priority Badge -->
+            <span class="priority-badge p-{{ task.priority }}">
+                {{ '🔴' if task.priority == 'high' else '🟡' if task.priority == 'medium' else '🟢' }}
+                {{ task.priority }}
+            </span>
+
+            <!-- Delete Button -->
+            <button class="delete-btn-sm" onclick="deleteTask({{ task.id }})">✕</button>
+
+        </div>
+        {% endfor %}
+
+    {% else %}
+        <div class="empty-state" id="emptyTasks">
+            <div class="empty-emoji">✅</div>
+            <p>No tasks yet! Add your first one above.</p>
+        </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function addTask() {
+    const title = document.getElementById('taskTitle').value.trim();
+    const priority = document.getElementById('taskPriority').value;
+    const due_date = document.getElementById('taskDue').value;
+    
+    if (!title) { showToast('Please enter a task title ⚠️'); return; }
+    
+    const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, priority, due_date })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+        showToast('Task added! ✅');
+        document.getElementById('taskTitle').value = '';
+        setTimeout(() => location.reload(), 600);
+    }
+}
+
+async function toggleTask(id) {
+    const response = await fetch(`/api/tasks/${id}/toggle`, { method: 'PUT' });
+    const data = await response.json();
+    
+    const item = document.getElementById(`task-${id}`);
+    const titleEl = item.querySelector('.task-title');
+    const checkBtn = item.querySelector('.task-check');
+    
+    if (data.completed) {
+        item.classList.add('task-done');
+        titleEl.classList.add('strikethrough');
+        checkBtn.classList.add('checked');
+        checkBtn.textContent = '✓';
+        item.dataset.status = 'completed';
+        showToast('Task completed! 🎉');
+    } else {
+        item.classList.remove('task-done');
+        titleEl.classList.remove('strikethrough');
+        checkBtn.classList.remove('checked');
+        checkBtn.textContent = '';
+        item.dataset.status = 'pending';
+        showToast('Task unmarked!');
+    }
+}
+
+async function deleteTask(id) {
+    await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+    document.getElementById(`task-${id}`).style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => {
+        document.getElementById(`task-${id}`).remove();
+        showToast('Task removed!');
+    }, 300);
+}
+
+// Filter tasks by clicking the filter tabs
+function filterTasks(filter, btn) {
+    // Update active tab style
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    
+    // Show/hide tasks
+    document.querySelectorAll('.task-item').forEach(item => {
+        const status = item.dataset.status;
+        const priority = item.dataset.priority;
+        
+        if (filter === 'all') item.style.display = 'flex';
+        else if (filter === 'pending') item.style.display = status === 'pending' ? 'flex' : 'none';
+        else if (filter === 'completed') item.style.display = status === 'completed' ? 'flex' : 'none';
+        else if (filter === 'high') item.style.display = priority === 'high' ? 'flex' : 'none';
+    });
+}
+</script>
+{% endblock %}

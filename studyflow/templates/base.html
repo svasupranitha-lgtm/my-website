@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}StudyFlow{% endblock %} ✦</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- ==========================================
+     SIDEBAR NAVIGATION
+     ========================================== -->
+<aside class="sidebar" id="sidebar">
+    <!-- Logo / Brand -->
+    <div class="sidebar-brand">
+        <span class="brand-icon">⚡</span>
+        <span class="brand-name">StudyFlow</span>
+    </div>
+
+    <!-- Navigation Links -->
+    <nav class="sidebar-nav">
+        <a href="/" class="nav-item {% if request.path == '/' %}active{% endif %}">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="/cgpa" class="nav-item {% if request.path == '/cgpa' %}active{% endif %}">
+            <span class="nav-icon">🎓</span>
+            <span class="nav-label">CGPA Tracker</span>
+        </a>
+        <a href="/attendance" class="nav-item {% if request.path == '/attendance' %}active{% endif %}">
+            <span class="nav-icon">📋</span>
+            <span class="nav-label">Attendance</span>
+        </a>
+        <a href="/tasks" class="nav-item {% if request.path == '/tasks' %}active{% endif %}">
+            <span class="nav-icon">✅</span>
+            <span class="nav-label">To-Do List</span>
+        </a>
+        <a href="/planner" class="nav-item {% if request.path == '/planner' %}active{% endif %}">
+            <span class="nav-icon">📅</span>
+            <span class="nav-label">Daily Planner</span>
+        </a>
+        <a href="/reminders" class="nav-item {% if request.path == '/reminders' %}active{% endif %}">
+            <span class="nav-icon">🔔</span>
+            <span class="nav-label">Reminders</span>
+        </a>
+    </nav>
+
+    <!-- Dark Mode Toggle at the bottom -->
+    <div class="sidebar-footer">
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+            <span id="themeIcon">🌙</span>
+            <span id="themeLabel">Dark Mode</span>
+        </button>
+    </div>
+</aside>
+
+<!-- Mobile hamburger menu button -->
+<button class="hamburger" id="hamburger" onclick="toggleSidebar()">☰</button>
+
+<!-- ==========================================
+     MAIN CONTENT AREA
+     ========================================== -->
+<main class="main-content">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+            <p class="page-subtitle">{% block page_subtitle %}Welcome back! Let's get productive 🔥{% endblock %}</p>
+        </div>
+        <div class="header-date">
+            <span id="currentDate"></span>
+        </div>
+    </div>
+
+    <!-- Toast notification (shows success/error messages) -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Page Content injected here -->
+    {% block content %}{% endblock %}
+</main>
+
+<!-- ==========================================
+     SHARED JAVASCRIPT
+     ========================================== -->
+<script>
+    // ---- Display current date ----
+    const dateEl = document.getElementById('currentDate');
+    const now = new Date();
+    dateEl.textContent = now.toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    // ---- Dark/Light Mode Toggle ----
+    function toggleTheme() {
+        const html = document.documentElement;
+        const icon = document.getElementById('themeIcon');
+        const label = document.getElementById('themeLabel');
+
+        if (html.getAttribute('data-theme') === 'dark') {
+            html.setAttribute('data-theme', 'light');
+            icon.textContent = '☀️';
+            label.textContent = 'Light Mode';
+            localStorage.setItem('theme', 'light');
+        } else {
+            html.setAttribute('data-theme', 'dark');
+            icon.textContent = '🌙';
+            label.textContent = 'Dark Mode';
+            localStorage.setItem('theme', 'dark');
+        }
+    }
+
+    // Load saved theme preference
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    if (savedTheme === 'light') {
+        document.getElementById('themeIcon').textContent = '☀️';
+        document.getElementById('themeLabel').textContent = 'Light Mode';
+    }
+
+    // ---- Mobile Sidebar Toggle ----
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    // ---- Toast Notification ----
+    // Call this to show a message like showToast("Done!", "success")
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = `toast toast-${type} show`;
+        setTimeout(() => { toast.className = 'toast'; }, 3000);
+    }
+
+    // ---- Universal Delete Function ----
+    // Sends a DELETE request to the server
+    async function deleteItem(url, callback) {
+        const response = await fetch(url, { method: 'DELETE' });
+        const data = await response.json();
+        if (data.success) {
+            showToast('Deleted!', 'success');
+            if (callback) callback();
+        }
+    }
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>
