@@ -532,4 +532,8 @@ if __name__ == '__main__':
     init_db()  # Set up the database tables
     print("🚀 StudyFlow is running!")
     print("📖 Open your browser and go to: http://localhost:5000")
-    app.run(debug=True)  # debug=True means you'll see errors in the browser (great for beginners!)
+   import os
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
